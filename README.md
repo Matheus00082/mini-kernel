@@ -1,2 +1,2 @@
-# -mini-kernel
+# mini-kernel
 Trabalho de S.O
