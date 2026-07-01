@@ -9,4 +9,8 @@ typedef enum{
     FINISHED
 } ProcessState;
 
+PCB* pcb_create(int pid, int process_duration, int priority, int amount_of_threads, int t0);
+int pcb_compare(const void *process1, const void *process2);
+void pcb_destroy(void * p);
+
 #endif

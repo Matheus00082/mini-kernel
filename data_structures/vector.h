@@ -10,6 +10,7 @@ void *vector_remove(tVector *vector, int i);
 void *vector_pop_back(tVector *vector);
 int vector_size(tVector *vector);
 int vector_allocated(tVector *vector);
+void vector_sort(tVector *v, int (*cmp)(const void *, const void *));
 void vector_destroy(tVector *vector, void (*destroy)(void *));
 
 #endif
