@@ -4,6 +4,8 @@
 #include <time.h>
 #include "../control_structures/pcb.h"
 #include "../data_structures/vector.h"
+#include "../schedulers/scheduler.h"
+
 
 int main(int argc, char const *argv[])
 {
@@ -36,10 +38,12 @@ int main(int argc, char const *argv[])
     vector_sort(processes, pcb_compare);
     fscanf(file, "%d", &scheduler_type);
 
-    // Selecionar o scheduler
+    Scheduler * scheduler = scheduler_create(scheduler_type, NULL);
 
     fclose(file);
     vector_destroy(processes, pcb_destroy);
+    scheduler_destroy(scheduler);
 
     return 0;
 }
+
