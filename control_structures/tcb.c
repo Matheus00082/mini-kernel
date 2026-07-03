@@ -5,7 +5,7 @@
 #include "pcb.h"
 #include "tcb.h"
 
-typedef struct {
+struct TCB{
     PCB* pcb;
     int thread_index;
-} TCB;
+};

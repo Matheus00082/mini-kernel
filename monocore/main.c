@@ -6,6 +6,7 @@
 #include "../data_structures/vector.h"
 #include "../schedulers/scheduler.h"
 
+#define CORE 1
 
 int main(int argc, char const *argv[])
 {
@@ -38,7 +39,27 @@ int main(int argc, char const *argv[])
     vector_sort(processes, pcb_compare);
     fscanf(file, "%d", &scheduler_type);
 
-    Scheduler * scheduler = scheduler_create(scheduler_type, NULL);
+    FILE *log = fopen("escalonador_log_minikernel.txt", "w");
+    Scheduler * scheduler = scheduler_create(scheduler_type, log);
+    AuxScheduler * aux_mono = aux_scheduler_create(scheduler, CORE);
+
+    pthread_t scheduler_thread;
+    pthread_create(&scheduler_thread, NULL, scheduler_run, aux_mono);
+
+    int time_1 = 0;
+    int time_2 = 0;
+
+    for (int i = 0; i < amount_of_processes; i++)
+    {
+        PCB *pcb = vector_get(processes, i);
+        time_2 = get_start_time(pcb);
+        usleep((time_2 - time_1) * 1000);
+        scheduler_push(scheduler, pcb);
+        time_1 = time_2;
+    }
+    
+    scheduler_finish(scheduler);
+    pthread_join(scheduler_thread, NULL);
 
     fclose(file);
     vector_destroy(processes, pcb_destroy);

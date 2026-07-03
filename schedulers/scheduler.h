@@ -7,12 +7,19 @@
 
 typedef struct Scheduler Scheduler;
 
-typedef void (*func_ptr_ready_queue_insert)(void * ready_queue, PCB * pcb);
-typedef void* (*func_ptr_ready_queue_remove)(void * ready_queue);
-typedef int (*func_ptr_ready_queue_size)(void * ready_queue);
-typedef void (*func_ptr_ready_queue_destroy)(void * ready_queue);
+typedef struct AuxScheduler
+{
+    Scheduler *s;
+    int core_quantity;
+} AuxScheduler;
+
+AuxScheduler *aux_scheduler_create(Scheduler *s, int core_quantity);
+void aux_scheduler_destroy(AuxScheduler *);
 
 Scheduler * scheduler_create(SchedulerType type, FILE * log);
+void *scheduler_run(void *);
+void *scheduler_push(Scheduler *s, PCB *p);
+void scheduler_finish(Scheduler *s);
 void scheduler_destroy(Scheduler * s);
 
 #endif

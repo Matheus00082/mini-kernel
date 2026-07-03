@@ -13,10 +13,13 @@ struct PCB
     int priority;
     int num_threads;
     int start_time;
+    int quantum_left;
 
     ProcessState state;
-    pthread_mutex_t mutex;
-    pthread_cond_t cv;
+    pthread_mutex_t mutex_1;
+    pthread_mutex_t mutex_2;
+    pthread_cond_t cv_1;
+    pthread_cond_t cv_2;
     pthread_t *thread_ids;
 };
 
@@ -30,19 +33,20 @@ PCB *pcb_create(int pid, int process_len, int priority, int num_threads, int sta
     p->priority = priority;
     p->num_threads = num_threads;
     p->start_time = start_time;
+    p->quantum_left = 0;
     p->state = READY;
 
-    if (pthread_mutex_init(&p->mutex, NULL) != 0)
+    if (pthread_mutex_init(&p->mutex_1, NULL) != 0)
     {
         fprintf(stderr, "Erro: falha ao inicializar mutex\n");
         free(p);
         return NULL;
     }
 
-    if (pthread_cond_init(&p->cv, NULL) != 0)
+    if (pthread_cond_init(&p->cv_1, NULL) != 0)
     {
         fprintf(stderr, "Erro: falha ao inicializar condition variable\n");
-        pthread_mutex_destroy(&p->mutex);
+        pthread_mutex_destroy(&p->mutex_1);
         free(p);
         return NULL;
     }
@@ -50,6 +54,15 @@ PCB *pcb_create(int pid, int process_len, int priority, int num_threads, int sta
     p->thread_ids = calloc(num_threads, sizeof(pthread_t));
 
     return p;
+}
+
+void pcb_destroy(void *pcb)
+{
+    PCB *p = (PCB *)pcb;
+    free(p->thread_ids);
+    pthread_cond_destroy(&p->cv_1);
+    pthread_mutex_destroy(&p->mutex_1);
+    free(p);
 }
 
 int pcb_compare(const void *process1, const void *process2)
@@ -73,11 +86,57 @@ int pcb_compare(const void *process1, const void *process2)
     }
 }
 
-void pcb_destroy(void *pcb)
+void pcb_ready(PCB *p)
 {
-    PCB *p = (PCB *)pcb;
-    free(p->thread_ids);
-    pthread_cond_destroy(&p->cv);
-    pthread_mutex_destroy(&p->mutex);
-    free(p);
+    pthread_mutex_lock(&p->mutex_1);
+    p->state = READY;
+    pthread_cond_signal(&p->cv_1);
+    pthread_mutex_unlock(&p->mutex_1);
+}
+
+void pcb_running(PCB *p)
+{
+    pthread_mutex_lock(&p->mutex_1);
+    p->state = RUNNING;
+    pthread_cond_signal(&p->cv_1);
+    pthread_mutex_unlock(&p->mutex_1);
+}
+
+int pcb_finish(PCB *p)
+{
+    pthread_mutex_lock(&p->mutex_2);
+
+    while (p->quantum_left == 0)
+    {
+        pthread_cond_wait(&p->cv_2, &p->mutex_2);
+    }
+
+    p->quantum_left = 0;
+    pthread_mutex_unlock(&p->mutex_2);
+
+    return (p->state == FINISHED);
+}
+
+int get_pid(PCB *p)
+{
+    return p->pid;
+}
+
+int get_priority(PCB *p)
+{
+    return p->priority;
+}
+
+int get_start_time(PCB *p)
+{
+    return p->start_time;
+}
+
+void threads_join(PCB *p)
+{
+    for (int i = 0; i < p->num_threads; i++)
+    {
+        pthread_join(p->thread_ids[i], NULL);
+    }
+    
 }
