@@ -30,7 +30,7 @@ Scheduler * scheduler_create(SchedulerType type, FILE * log) {
 
     // Define as funções da fila de prontos a depender do algoritmo
     if(type == FCFS) {
-        s->ready_queue = FIFO_create();
+        s->ready_queue = FIFO_create(pcb_destroy);
         s->ready_queue_insert_fn = fifo_create;
         s->ready_queue_remove_fn = fifo_remove;
         s->ready_queue_size_fn = fifo_size;
@@ -44,7 +44,7 @@ Scheduler * scheduler_create(SchedulerType type, FILE * log) {
         s->ready_queue_destroy_fn = round_robin_destroy;
     }
     else if(type == PRIORITY) {
-        s->ready_queue = priority_create();
+        s->ready_queue = priority_create(pcb_destroy);
         s->ready_queue_insert_fn = priority_push;
         s->ready_queue_remove_fn = priority_remove;
         s->ready_queue_size_fn = priority_size;

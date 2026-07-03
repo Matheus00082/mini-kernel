@@ -17,7 +17,7 @@ void swap_nodes(tHeap *heap, int idx1, int idx2);
 int heap_size(tHeap *heap);
 void *heap_peek(tHeap *heap, int idx);
 double heap_peek_priority(tHeap *heap, int idx);
-void heap_destroy(tHeap *heap);
+void heap_destroy(tHeap *heap, void (*destroy)(void *));
 void *get_data(tHeap *heap, int idx);
 void heap_update_priority(tHeap *heap, void *data, double new_priority);
 

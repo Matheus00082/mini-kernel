@@ -140,8 +140,16 @@ void swap_nodes(tHeap *heap, int idx1, int idx2)
     heap->nodes[idx2] = temp;
 }
 
-void heap_destroy(tHeap *heap)
+void heap_destroy(tHeap *heap, void (*destroy)(void *))
 {
+    if (destroy)
+    {
+        for (int i = 0; i < heap->size; i++)
+        {
+            destroy(heap->nodes[i].data);
+        }
+    }
+    
     free(heap->nodes);
     free(heap);
 }
