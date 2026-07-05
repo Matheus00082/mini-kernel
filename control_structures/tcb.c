@@ -18,7 +18,7 @@ TCB* tcb_create(PCB* pcb, int thread_index) {
     return tcb;
 }
 
-TCB* destroy(TCB* tcb) {
+void destroy(TCB* tcb) {
     free(tcb);
 }
 
