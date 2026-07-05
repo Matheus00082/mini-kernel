@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "../data_structures/heap.h"
+#include "../control_structures/pcb.h"
 #include "PreemptivePriority.h"
 #include "aux.h"
 
@@ -17,7 +18,8 @@ PP * priority_create(void (*destroy)(void *)){
 }
 
 void priority_push(void * p, void * data){
-    heap_push(((PP *)p)->ready_queue, data, 5);
+    double key = (double)get_priority((PCB *)data);
+    heap_push(((PP *)p)->ready_queue, data, key);
 }
 
 void * priority_remove(void* p){

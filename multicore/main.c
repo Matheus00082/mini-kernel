@@ -33,7 +33,6 @@ int main(int argc, char const *argv[])
         fscanf(file, "%d", &t0);
 
         PCB *pcb = pcb_create(i + 1, process_duration, priority, amount_of_threads, t0);
-        pcb_start_threads(pcb);
         vector_push(processes, pcb);
     }
 
@@ -60,6 +59,7 @@ int main(int argc, char const *argv[])
         PCB *pcb = vector_get(processes, i);
         time_2 = get_start_time(pcb);
         usleep((time_2 - time_1) * 1000);
+        pcb_start_threads(pcb);
         scheduler_push(scheduler, pcb);
         time_1 = time_2;
     }
