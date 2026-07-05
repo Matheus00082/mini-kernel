@@ -106,20 +106,20 @@ void *scheduler_run(void *a){
         else{type = "PRIORITY";}
 
         if(s->type == FCFS) {
-            if (core_quantity > 0)
+            if (core_quantity > 1)
                 fprintf(s->log, "[%s] Executando processo PID %d // processador %d\n", type, get_pid(pcb), core_quantity);
             else
                 fprintf(s->log, "[%s] Executando processo PID %d\n", type, get_pid(pcb));
         }
         else if(s->type == ROUND_ROBIN) {
-            if (core_quantity > 0)
+            if (core_quantity > 1)
                 fprintf(s->log, "[%s] Executando processo PID %d com quantum %dms // processador %d\n", type, get_pid(pcb), QUANTUM_TIME, core_quantity);
             else
                 fprintf(s->log, "[%s] Executando processo PID %d com quantum %dms\n", type, get_pid(pcb), QUANTUM_TIME);
         }
         else if(s->type == PRIORITY){
             if (old_pid != get_pid(pcb)) {
-                if (core_quantity > 0)
+                if (core_quantity > 1)
                     fprintf(s->log, "[%s] Executando processo PID %d prioridade %d // processador %d\n", type, get_pid(pcb), get_priority(pcb), core_quantity);
                 else
                     fprintf(s->log, "[%s] Executando processo PID %d prioridade %d\n", type, get_pid(pcb), get_priority(pcb));
@@ -133,7 +133,7 @@ void *scheduler_run(void *a){
             fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
         }
         else if(s->type == ROUND_ROBIN || s->type == PRIORITY) {
-            usleep(s->quantum * 1000);
+            //usleep(s->quantum * 1000);
             
             if(pcb_finish(pcb)) {
                 threads_join(pcb);
@@ -146,12 +146,13 @@ void *scheduler_run(void *a){
         }
 
         old_pid = get_pid(pcb);
+
     }
 
     return NULL;
 }
 
-void *scheduler_push(Scheduler *s, PCB *p)
+void scheduler_push(Scheduler *s, PCB *p)
 {
     pthread_mutex_lock(&s->lock);
     s->queue_insert(s->ready_queue, p);

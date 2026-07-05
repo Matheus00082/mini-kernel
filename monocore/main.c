@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <time.h>
 #include "../control_structures/pcb.h"
+#include "../control_structures/tcb.h"
 #include "../data_structures/vector.h"
 #include "../schedulers/scheduler.h"
 
@@ -32,13 +33,14 @@ int main(int argc, char const *argv[])
         fscanf(file, "%d", &amount_of_threads);
         fscanf(file, "%d", &t0);
 
-        vector_push(processes,
-            pcb_create(i, process_duration, priority, amount_of_threads, t0));
+        PCB *pcb = pcb_create(i + 1, process_duration, priority, amount_of_threads, t0);
+        pcb_start_threads(pcb);
+        vector_push(processes, pcb);
     }
     
     vector_sort(processes, pcb_compare);
     fscanf(file, "%d", &scheduler_type);
-
+    
     FILE *log = fopen("escalonador_log_minikernel.txt", "w");
     Scheduler * scheduler = scheduler_create(scheduler_type, log);
     AuxScheduler * aux_mono = aux_scheduler_create(scheduler, CORE);
@@ -48,7 +50,7 @@ int main(int argc, char const *argv[])
 
     int time_1 = 0;
     int time_2 = 0;
-
+    
     for (int i = 0; i < amount_of_processes; i++)
     {
         PCB *pcb = vector_get(processes, i);

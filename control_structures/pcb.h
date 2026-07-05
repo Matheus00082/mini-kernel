@@ -16,5 +16,6 @@ int get_pid(PCB *);
 int get_priority(PCB *p);
 int get_start_time(PCB *);
 void threads_join(PCB *p);
-
+void pcb_start_threads(PCB *p);
+void* thread_routine(void* arg);
 #endif
