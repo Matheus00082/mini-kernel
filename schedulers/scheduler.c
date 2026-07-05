@@ -24,10 +24,11 @@ struct Scheduler{
     func_queue_destroy queue_destroy;
 };
 
-AuxScheduler *aux_scheduler_create(Scheduler *s, int core_quantity){
+AuxScheduler *aux_scheduler_create(Scheduler *s, int id, AuxSchedulerType type){
     AuxScheduler *aux = calloc(1, sizeof(AuxScheduler));
     aux->s = s;
-    aux->core_quantity = core_quantity;
+    aux->ID = id;
+    aux->type = type;
     return aux;
 }
 
@@ -77,7 +78,8 @@ Scheduler * scheduler_create(SchedulerType type, FILE * log) {
 void *scheduler_run(void *a){
     AuxScheduler *aux = (AuxScheduler *)a;
     Scheduler *s = aux->s;
-    int core_quantity = aux->core_quantity;
+    AuxSchedulerType core_type = aux->type;
+    int core_id = aux->ID;
     int old_pid = -1;
 
     while(1){
@@ -106,21 +108,21 @@ void *scheduler_run(void *a){
         else{type = "PRIORITY";}
 
         if(s->type == FCFS) {
-            if (core_quantity > 1)
-                fprintf(s->log, "[%s] Executando processo PID %d // processador %d\n", type, get_pid(pcb), core_quantity);
+            if (core_type == MULTI)
+                fprintf(s->log, "[%s] Executando processo PID %d // processador %d\n", type, get_pid(pcb), core_id);
             else
                 fprintf(s->log, "[%s] Executando processo PID %d\n", type, get_pid(pcb));
         }
         else if(s->type == ROUND_ROBIN) {
-            if (core_quantity > 1)
-                fprintf(s->log, "[%s] Executando processo PID %d com quantum %dms // processador %d\n", type, get_pid(pcb), QUANTUM_TIME, core_quantity);
+            if (core_type == MULTI)
+                fprintf(s->log, "[%s] Executando processo PID %d com quantum %dms // processador %d\n", type, get_pid(pcb), QUANTUM_TIME, core_id);
             else
                 fprintf(s->log, "[%s] Executando processo PID %d com quantum %dms\n", type, get_pid(pcb), QUANTUM_TIME);
         }
         else if(s->type == PRIORITY){
             if (old_pid != get_pid(pcb)) {
-                if (core_quantity > 1)
-                    fprintf(s->log, "[%s] Executando processo PID %d prioridade %d // processador %d\n", type, get_pid(pcb), get_priority(pcb), core_quantity);
+                if (core_type == MULTI)
+                    fprintf(s->log, "[%s] Executando processo PID %d prioridade %d // processador %d\n", type, get_pid(pcb), get_priority(pcb), core_id);
                 else
                     fprintf(s->log, "[%s] Executando processo PID %d prioridade %d\n", type, get_pid(pcb), get_priority(pcb));
             }
@@ -160,11 +162,16 @@ void scheduler_push(Scheduler *s, PCB *p)
     pthread_mutex_unlock(&s->lock);
 }
 
-void scheduler_finish(Scheduler *s)
+void scheduler_finish(Scheduler *s, int cores)
 {
     pthread_mutex_lock(&s->lock);
     s->state = CONCLUDED;
-    pthread_cond_signal(&s->cond);
+
+    if(cores ==1 )
+        pthread_cond_signal(&s->cond);
+    else
+        pthread_cond_broadcast(&s->cond);
+
     pthread_mutex_unlock(&s->lock);
 }
 

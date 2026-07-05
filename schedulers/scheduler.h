@@ -10,16 +10,17 @@ typedef struct Scheduler Scheduler;
 typedef struct AuxScheduler
 {
     Scheduler *s;
-    int core_quantity;
+    int ID;
+    AuxSchedulerType type;
 } AuxScheduler;
 
-AuxScheduler *aux_scheduler_create(Scheduler *s, int core_quantity);
+AuxScheduler *aux_scheduler_create(Scheduler *s, int id, AuxSchedulerType type);
 void aux_scheduler_destroy(AuxScheduler *);
 
 Scheduler * scheduler_create(SchedulerType type, FILE * log);
 void *scheduler_run(void *);
 void scheduler_push(Scheduler *s, PCB *p);
-void scheduler_finish(Scheduler *s);
+void scheduler_finish(Scheduler *s, int cores);
 void scheduler_destroy(Scheduler * s);
 
 #endif

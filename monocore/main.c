@@ -7,7 +7,7 @@
 #include "../data_structures/vector.h"
 #include "../schedulers/scheduler.h"
 
-#define CORE 1
+#define CORE 0
 
 int main(int argc, char const *argv[])
 {
@@ -43,7 +43,7 @@ int main(int argc, char const *argv[])
     
     FILE *log = fopen("escalonador_log_minikernel.txt", "w");
     Scheduler * scheduler = scheduler_create(scheduler_type, log);
-    AuxScheduler * aux_mono = aux_scheduler_create(scheduler, CORE);
+    AuxScheduler * aux_mono = aux_scheduler_create(scheduler, 0, CORE);
 
     pthread_t scheduler_thread;
     pthread_create(&scheduler_thread, NULL, scheduler_run, aux_mono);
@@ -60,7 +60,7 @@ int main(int argc, char const *argv[])
         time_1 = time_2;
     }
     
-    scheduler_finish(scheduler);
+    scheduler_finish(scheduler, CORE);
     pthread_join(scheduler_thread, NULL);
 
     fclose(file);
