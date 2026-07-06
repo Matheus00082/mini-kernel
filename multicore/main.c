@@ -42,8 +42,8 @@ int main(int argc, char const *argv[])
     FILE *log = fopen("log_execucao_minikernel.txt", "w");
     Scheduler * scheduler = scheduler_create(scheduler_type, log);
     
-    AuxScheduler * aux_core1 = aux_scheduler_create(scheduler, 0, CORES);
-    AuxScheduler * aux_core2 = aux_scheduler_create(scheduler, 1, CORES);
+    AuxScheduler * aux_core1 = aux_scheduler_create(scheduler, 0, MULTI);
+    AuxScheduler * aux_core2 = aux_scheduler_create(scheduler, 1, MULTI);
 
     pthread_t scheduler_thread1;
     pthread_t scheduler_thread2;
@@ -64,7 +64,7 @@ int main(int argc, char const *argv[])
         time_1 = time_2;
     }
     
-    scheduler_finish(scheduler, CORES);
+    scheduler_finish(scheduler, 2);
     
     pthread_join(scheduler_thread1, NULL);
     pthread_join(scheduler_thread2, NULL);

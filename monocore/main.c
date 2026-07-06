@@ -41,9 +41,9 @@ int main(int argc, char const *argv[])
     vector_sort(processes, pcb_compare);
     fscanf(file, "%d", &scheduler_type);
     
-    FILE *log = fopen("escalonador_log_minikernel.txt", "w");
+    FILE *log = fopen("log_execucao_minikernel.txt", "w");
     Scheduler * scheduler = scheduler_create(scheduler_type, log);
-    AuxScheduler * aux_mono = aux_scheduler_create(scheduler, 0, CORE);
+    AuxScheduler * aux_mono = aux_scheduler_create(scheduler, 0, SINGLE);
 
     pthread_t scheduler_thread;
     pthread_create(&scheduler_thread, NULL, scheduler_run, aux_mono);
@@ -60,7 +60,7 @@ int main(int argc, char const *argv[])
         time_1 = time_2;
     }
     
-    scheduler_finish(scheduler, CORE);
+    scheduler_finish(scheduler, 1);
     pthread_join(scheduler_thread, NULL);
 
     fclose(file);

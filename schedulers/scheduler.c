@@ -7,8 +7,6 @@
 #include "PreemptivePriority.h"
 #include "RoundRobin.h"
 
-
-
 struct Scheduler{
     void * ready_queue;
     SchedulerType type;
@@ -17,6 +15,8 @@ struct Scheduler{
     FILE * log;
     pthread_mutex_t lock;
     pthread_cond_t cond;
+
+    int active_processes; //aqui
 
     func_queue_insert queue_insert;
     func_queue_remove queue_remove;
@@ -41,6 +41,7 @@ Scheduler * scheduler_create(SchedulerType type, FILE * log) {
 
     s->quantum = QUANTUM_TIME;
     s->log = log;
+    s->active_processes = 0; //aqui
 
     // Define as funções da fila de prontos a depender do algoritmo
     if(type == FCFS) {
@@ -80,7 +81,7 @@ void *scheduler_run(void *a){
     Scheduler *s = aux->s;
     AuxSchedulerType core_type = aux->type;
     int core_id = aux->ID;
-    int old_pid = -1;
+    //int old_pid = -1;
 
     while(1){
         pthread_mutex_lock(&s->lock);
@@ -92,14 +93,21 @@ void *scheduler_run(void *a){
         }
         
         //Todos os processos finalizados
-        if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0){
+        if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0){
             pthread_mutex_unlock(&s->lock);
             aux_scheduler_destroy(aux);
             break;
         }
 
+        if (s->queue_size(s->ready_queue) == 0) {
+            pthread_cond_wait(&s->cond, &s->lock);
+            pthread_mutex_unlock(&s->lock);
+            continue;
+        }
+
         PCB *pcb = s->queue_remove(s->ready_queue);
-        pthread_mutex_unlock(&s->lock);
+        //pthread_mutex_unlock(&s->lock);
+        s->active_processes++; //aqui
 
         const char *type = "EMPTY";
 
@@ -120,34 +128,58 @@ void *scheduler_run(void *a){
                 fprintf(s->log, "[%s] Executando processo PID %d com quantum %dms\n", type, get_pid(pcb), QUANTUM_TIME);
         }
         else if(s->type == PRIORITY){
-            if (old_pid != get_pid(pcb)) {
+           // if (old_pid != get_pid(pcb)) {  aqui
                 if (core_type == MULTI)
                     fprintf(s->log, "[%s] Executando processo PID %d prioridade %d // processador %d\n", type, get_pid(pcb), get_priority(pcb), core_id);
                 else
                     fprintf(s->log, "[%s] Executando processo PID %d prioridade %d\n", type, get_pid(pcb), get_priority(pcb));
-            }
+            //}
         }
+
+        pthread_mutex_unlock(&s->lock); //aqui
 
         pcb_running(pcb);
 
         if(s->type == FCFS) {
             threads_join(pcb);
+
+            pthread_mutex_lock(&s->lock); //aqui
+
             fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
+
+            s->active_processes--; //aqui
+
+            if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) { //aqui
+                pthread_cond_broadcast(&s->cond); // Acorda núcleos residuais para fechamento  AQUI
+            }
+            pthread_mutex_unlock(&s->lock); //aqui
         }
         else if(s->type == ROUND_ROBIN || s->type == PRIORITY) {
             //usleep(s->quantum * 1000);
             
             if(pcb_finish(pcb)) {
                 threads_join(pcb);
+
+                pthread_mutex_lock(&s->lock); //aqui
                 fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
+                s->active_processes--; //aqui
+
+                if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) { //aqui
+                    pthread_cond_broadcast(&s->cond); //aqui
+                }
+                pthread_mutex_unlock(&s->lock); //aqui
             }
             else {
                 pcb_ready(pcb);
+                pthread_mutex_lock(&s->lock); //aqui
                 s->queue_insert(s->ready_queue, pcb);
+                s->active_processes--; //aqui
+                pthread_cond_signal(&s->cond); // alerta que fila recebeu elemento aqui
+                pthread_mutex_unlock(&s->lock); //aqui
             }
         }
 
-        old_pid = get_pid(pcb);
+        //old_pid = get_pid(pcb);
 
     }
 

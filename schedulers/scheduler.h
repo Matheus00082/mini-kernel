@@ -7,6 +7,11 @@
 
 typedef struct Scheduler Scheduler;
 
+typedef enum {
+    SINGLE,
+    MULTI
+} AuxSchedulerType;
+
 typedef struct AuxScheduler
 {
     Scheduler *s;

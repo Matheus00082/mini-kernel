@@ -17,7 +17,7 @@ RR * round_robin_create(void (*destroy)(void *)){
 }
 
 void round_robin_push(void * r, void * data){
-    return deq_push_back(((RR *)r)->ready_queue, data);
+    deq_push_back(((RR *)r)->ready_queue, data);
 }
 
 int round_robin_size(void * r){
