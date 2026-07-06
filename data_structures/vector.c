@@ -79,12 +79,10 @@ void *vector_remove(tVector *vector, int i)
 }
 
 void vector_sort(tVector *v, int (*cmp)(const void *, const void *)) {
-    // Verificação de segurança para evitar falhas de segmentação
     if (v == NULL || v->size <= 1 || v->data == NULL) {
         return;
     }
     
-    // qsort(array, numero_elementos, tamanho_do_elemento, funcao_comparacao)
     qsort(v->data, v->size, sizeof(void*), cmp);
 }
 

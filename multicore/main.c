@@ -51,13 +51,14 @@ int main(int argc, char const *argv[])
     pthread_create(&scheduler_thread1, NULL, scheduler_run, aux_core1);
     pthread_create(&scheduler_thread2, NULL, scheduler_run, aux_core2);
 
-    int time_1 = 0;
-    int time_2 = 0;
+    int time_1 = 0; // tempo do último processo inserido
+    int time_2 = 0; // tempo do próximo processo inserido
     
     for (int i = 0; i < amount_of_processes; i++)
     {
         PCB *pcb = vector_get(processes, i);
         time_2 = get_start_time(pcb);
+        // Paralisa a thread principal para simular até a chegada do próximo processo
         usleep((time_2 - time_1) * 1000);
         pcb_start_threads(pcb);
         scheduler_push(scheduler, pcb);

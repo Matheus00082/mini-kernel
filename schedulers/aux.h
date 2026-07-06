@@ -18,11 +18,6 @@ typedef enum{
     CONCLUDED = 1
 } SchedulerState;
 
-/* typedef enum{
-    MONO = 0,
-    MULTI = 1
-} AuxSchedulerType; */
-
 typedef void (*func_queue_insert)(void * ready_queue, void * pcb);
 typedef void* (*func_queue_remove)(void * ready_queue);
 typedef int (*func_queue_size)(void * ready_queue);

@@ -14,10 +14,10 @@ struct PCB
     int priority;
     int num_threads;
     int start_time;
-    int quantum_left;      // bursts liberados pelo escalonador e ainda não consumidos
-    int bursts_done;       // bursts concluídos e ainda não consumidos pelo escalonador
-    int working_threads;   // threads que ainda possuem carga de trabalho
-    int last_burst;        // duração do último burst executado (p/ segurar o quantum)
+    int quantum_left;
+    int bursts_done;
+    int working_threads;
+    int last_burst;
 
     ProcessState state;
     pthread_mutex_t mutex_1;
@@ -107,7 +107,7 @@ void pcb_running(PCB *p)
 {
     pthread_mutex_lock(&p->mutex_1);
     if (p->remaining_time > 0 && p->state != FINISHED) {
-        p->quantum_left++; // libera UM burst para UMA thread executar
+        p->quantum_left++;
         p->state = RUNNING;
         pthread_cond_broadcast(&p->cv_1);
     }
@@ -118,13 +118,12 @@ int pcb_finish(PCB *p)
 {
     pthread_mutex_lock(&p->mutex_1);
 
-    // O escalonador dorme até que uma thread termine seu burst ou o processo acabe
     while (p->bursts_done == 0 && p->state != FINISHED) {
         pthread_cond_wait(&p->cv_2, &p->mutex_1);
     }
 
     if (p->bursts_done > 0) {
-        p->bursts_done--; // consome o burst concluído
+        p->bursts_done--;
     }
 
     int is_finished = (p->remaining_time <= 0);
@@ -187,7 +186,6 @@ void* thread_routine(void* arg) {
     pthread_mutex_lock(&pcb->mutex_1);
     while (workload > 0 && pcb->state != FINISHED) {
 
-        // Bloqueia até o escalonador liberar um burst (evita execução sem posse de CPU)
         while (!(pcb->state == RUNNING && pcb->quantum_left > 0) && pcb->state != FINISHED) {
             pthread_cond_wait(&pcb->cv_1, &pcb->mutex_1);
         }
@@ -196,11 +194,11 @@ void* thread_routine(void* arg) {
             break;
         }
 
-        pcb->quantum_left--; // consome a vaga de burst liberada para esta thread
+        pcb->quantum_left--;
         int time_spent = (workload > QUANTUM_TIME) ? QUANTUM_TIME : workload;
         pthread_mutex_unlock(&pcb->mutex_1);
 
-        usleep(time_spent * 1000); // simula de fato a execução da thread
+        usleep(time_spent * 1000);
 
         pthread_mutex_lock(&pcb->mutex_1);
         workload -= time_spent;
@@ -208,21 +206,18 @@ void* thread_routine(void* arg) {
         pcb->last_burst = time_spent;
 
         if (workload <= 0) {
-            pcb->working_threads--; // esta thread não possui mais carga
+            pcb->working_threads--;
         }
 
-        // Correção de resto de divisão matemática
         if (workload <= 0 && pcb->remaining_time > 0 && pcb->remaining_time < pcb->num_threads) {
             pcb->remaining_time = 0;
         }
 
-        // Se o processo acabou
         if (pcb->remaining_time <= 0 && pcb->state != FINISHED) {
             pcb->state = FINISHED;
-            pthread_cond_broadcast(&pcb->cv_1); // Acorda as outras threads
+            pthread_cond_broadcast(&pcb->cv_1);
         }
 
-        // Registra que ESTA thread concluiu seu burst e avisa o escalonador
         pcb->bursts_done++;
         pthread_cond_broadcast(&pcb->cv_2);
     }

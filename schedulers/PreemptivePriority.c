@@ -8,7 +8,7 @@
 struct PP{
     tHeap *ready_queue;
     func_data_destroy data_destroy;
-    int arrival_seq; // contador de chegadas para desempate por ordem de chegada à fila
+    int arrival_seq;
 };
 
 PP * priority_create(void (*destroy)(void *)){
@@ -21,7 +21,7 @@ PP * priority_create(void (*destroy)(void *)){
 
 void priority_push(void * p, void * data){
     PP *pp = (PP *)p;
-    // prioridade como chave principal e ordem de chegada à fila como desempate
+    // critério de desempate considerando bem as casas decimais
     double key = (double)get_priority((PCB *)data) * 1000000.0 + pp->arrival_seq;
     pp->arrival_seq++;
     heap_push(pp->ready_queue, data, key);

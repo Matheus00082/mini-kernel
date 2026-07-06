@@ -34,7 +34,7 @@ int main(int argc, char const *argv[])
         fscanf(file, "%d", &t0);
 
         PCB *pcb = pcb_create(i + 1, process_duration, priority, amount_of_threads, t0);
-        pcb_start_threads(pcb);
+        pcb_start_threads(pcb); // Cria e associa as threads ao processo antes de inseri-lo na lista
         vector_push(processes, pcb);
     }
     
@@ -55,7 +55,9 @@ int main(int argc, char const *argv[])
     {
         PCB *pcb = vector_get(processes, i);
         time_2 = get_start_time(pcb);
+        // Simula o tempo de chegada bloqueando a execução da main
         usleep((time_2 - time_1) * 1000);
+        // Insere o processo pronto na fila do escalonador
         scheduler_push(scheduler, pcb);
         time_1 = time_2;
     }
