@@ -25,6 +25,7 @@ struct Scheduler{
     func_queue_destroy queue_destroy;
 }; // controlador de processos
 
+
 static PCB * scheduler_join_target(Scheduler *s, AuxSchedulerType core_type)
 {
     if (core_type != MULTI || s->type != FCFS) {
@@ -61,7 +62,7 @@ Scheduler * scheduler_create(SchedulerType type, FILE * log) {
 
     s->quantum = QUANTUM_TIME;
     s->log = log;
-    s->active_processes = 0;
+    s->active_processes = 0; 
 
     if(type == FCFS) {
         s->ready_queue = fifo_create(pcb_destroy);
@@ -105,7 +106,7 @@ void *scheduler_run(void *a){
         pthread_mutex_lock(&s->lock);
 
         while (s->queue_size(s->ready_queue) == 0 && s->state == UNCONCLUDED
-            && scheduler_join_target(s, core_type) == NULL)
+               && scheduler_join_target(s, core_type) == NULL)
         {
             pthread_cond_wait(&s->cond, &s->lock);
         }
@@ -133,7 +134,7 @@ void *scheduler_run(void *a){
         }
 
         s->current[core_id] = pcb;
-        s->active_processes++;
+        s->active_processes++; 
 
         const char *type = "EMPTY";
 
@@ -165,10 +166,10 @@ void *scheduler_run(void *a){
         old_pid = get_pid(pcb);
 
         if (core_type == MULTI && s->type == FCFS) {
-            pthread_cond_broadcast(&s->cond);
+            pthread_cond_broadcast(&s->cond); 
         }
 
-        pthread_mutex_unlock(&s->lock);
+        pthread_mutex_unlock(&s->lock); 
 
         if(s->type == FCFS) {
             pcb_running(pcb);
@@ -179,7 +180,7 @@ void *scheduler_run(void *a){
             if (!joined) {
                 threads_join(pcb);
 
-                pthread_mutex_lock(&s->lock);
+                pthread_mutex_lock(&s->lock); 
 
                 fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
 
@@ -198,18 +199,17 @@ void *scheduler_run(void *a){
                 }
             }
 
-            // Registra o PCB no vetor current indicando que ele tomou posse do núcleo atual
             s->current[core_id] = NULL;
-            s->active_processes--;
+            s->active_processes--; 
 
             if (core_type == MULTI) {
-                pthread_cond_broadcast(&s->cond);
+                pthread_cond_broadcast(&s->cond); 
             }
 
-            if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) {
-                pthread_cond_broadcast(&s->cond);
+            if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) { //aqui
+                pthread_cond_broadcast(&s->cond); 
             }
-            pthread_mutex_unlock(&s->lock);
+            pthread_mutex_unlock(&s->lock); 
         }
         else if(s->type == ROUND_ROBIN || s->type == PRIORITY) {
             pcb_running(pcb);
@@ -221,17 +221,17 @@ void *scheduler_run(void *a){
             }
 
             if(finished) {
-                threads_join(pcb);
-
-                pthread_mutex_lock(&s->lock);
+                pthread_mutex_lock(&s->lock); 
                 fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
                 s->current[core_id] = NULL;
-                s->active_processes--;
+                s->active_processes--; 
 
-                if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) {
-                    pthread_cond_broadcast(&s->cond);
+                if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) { //aqui
+                    pthread_cond_broadcast(&s->cond); 
                 }
                 pthread_mutex_unlock(&s->lock);
+
+                threads_join(pcb);
             }
             else {
                 pcb_ready(pcb);
@@ -239,7 +239,7 @@ void *scheduler_run(void *a){
                 s->current[core_id] = NULL;
                 s->queue_insert(s->ready_queue, pcb);
                 s->active_processes--;
-                pthread_cond_signal(&s->cond);
+                pthread_cond_signal(&s->cond); 
                 pthread_mutex_unlock(&s->lock);
             }
         }
