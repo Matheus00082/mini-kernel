@@ -1,7 +1,11 @@
 all:
 
-monoprocessor:
-	gcc -o trabSO control_structures/*.c data_structures/*.c monocore/*.c schedulers/*.c -lm
+monoprocessador:
+	gcc -o trabSO control_structures/*.c data_structures/*.c monocore/*.c schedulers/*.c -lm -pthread
 
-multiprocessor:
-	gcc -o trabSO control_structures/*.c data_structures/*.c multicore/*.c schedulers/*.c -lm
+multiprocessador:
+	gcc -o trabSO control_structures/*.c data_structures/*.c multicore/*.c schedulers/*.c -lm -pthread
+
+monoprocessor: monoprocessador
+
+multiprocessor: multiprocessador

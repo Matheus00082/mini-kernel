@@ -15,6 +15,8 @@ int pcb_finish(PCB *p);
 int get_pid(PCB *);
 int get_priority(PCB *p);
 int get_start_time(PCB *);
+int get_working_threads(PCB *p);
+int get_last_burst(PCB *p);
 void threads_join(PCB *p);
 void pcb_start_threads(PCB *p);
 void* thread_routine(void* arg);

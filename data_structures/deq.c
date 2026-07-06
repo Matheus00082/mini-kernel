@@ -35,6 +35,21 @@ void deq_push_front(tDeq *deq, void *data)
 
 void deq_push_back(tDeq *deq, void *data)
 {
+    // Dobra a capacidade quando o buffer circular enche, realinhando os elementos
+    if (deq->size == deq->allocated)
+    {
+        void **new_data = (void **)calloc(deq->allocated * 2, sizeof(void *));
+        for (int i = 0; i < deq->size; i++)
+        {
+            new_data[i] = deq->data[(deq->front + i) % deq->allocated];
+        }
+        free(deq->data);
+        deq->data = new_data;
+        deq->front = 0;
+        deq->back = deq->size;
+        deq->allocated *= 2;
+    }
+
     deq->data[deq->back] = data;
     deq->back = (deq->back + 1) % deq->allocated;
     deq->size++;

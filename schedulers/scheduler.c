@@ -17,12 +17,35 @@ struct Scheduler{
     pthread_cond_t cond;
 
     int active_processes; //aqui
+    PCB * current[2]; // processo atualmente atendido por cada núcleo
 
     func_queue_insert queue_insert;
     func_queue_remove queue_remove;
     func_queue_size queue_size;
     func_queue_destroy queue_destroy;
 };
+
+// No FCFS multicore, um núcleo livre pode ajudar nas threads de um processo que já
+// está em execução no outro núcleo - mas somente quando não há mais ninguém na fila
+// de prontos e o processo ainda tem thread com carga não atendida (uma CPU por thread)
+static PCB * scheduler_join_target(Scheduler *s, AuxSchedulerType core_type)
+{
+    if (core_type != MULTI || s->type != FCFS) {
+        return NULL;
+    }
+
+    for (int i = 0; i < 2; i++) {
+        PCB *p = s->current[i];
+        if (p == NULL) {
+            continue;
+        }
+        int serving = (s->current[0] == p) + (s->current[1] == p);
+        if (get_working_threads(p) > serving) {
+            return p;
+        }
+    }
+    return NULL;
+}
 
 AuxScheduler *aux_scheduler_create(Scheduler *s, int id, AuxSchedulerType type){
     AuxScheduler *aux = calloc(1, sizeof(AuxScheduler));
@@ -81,17 +104,18 @@ void *scheduler_run(void *a){
     Scheduler *s = aux->s;
     AuxSchedulerType core_type = aux->type;
     int core_id = aux->ID;
-    //int old_pid = -1;
+    int old_pid = -1;
 
     while(1){
         pthread_mutex_lock(&s->lock);
 
-        //Impede CPU ociosa (ainda há processos para entrar)
-        while (s->queue_size(s->ready_queue) == 0 && s->state == UNCONCLUDED)
+        //Impede CPU ociosa (ainda há processos para entrar ou um processo com thread livre para ajudar)
+        while (s->queue_size(s->ready_queue) == 0 && s->state == UNCONCLUDED
+               && scheduler_join_target(s, core_type) == NULL)
         {
             pthread_cond_wait(&s->cond, &s->lock);
         }
-        
+
         //Todos os processos finalizados
         if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0){
             pthread_mutex_unlock(&s->lock);
@@ -99,14 +123,23 @@ void *scheduler_run(void *a){
             break;
         }
 
-        if (s->queue_size(s->ready_queue) == 0) {
-            pthread_cond_wait(&s->cond, &s->lock);
-            pthread_mutex_unlock(&s->lock);
-            continue;
+        PCB *pcb = NULL;
+        int joined = 0; // indica que este núcleo está ajudando um processo já despachado
+
+        if (s->queue_size(s->ready_queue) > 0) {
+            pcb = s->queue_remove(s->ready_queue);
+        }
+        else {
+            pcb = scheduler_join_target(s, core_type);
+            if (pcb == NULL) {
+                pthread_cond_wait(&s->cond, &s->lock);
+                pthread_mutex_unlock(&s->lock);
+                continue;
+            }
+            joined = 1;
         }
 
-        PCB *pcb = s->queue_remove(s->ready_queue);
-        //pthread_mutex_unlock(&s->lock);
+        s->current[core_id] = pcb;
         s->active_processes++; //aqui
 
         const char *type = "EMPTY";
@@ -128,26 +161,59 @@ void *scheduler_run(void *a){
                 fprintf(s->log, "[%s] Executando processo PID %d com quantum %dms\n", type, get_pid(pcb), QUANTUM_TIME);
         }
         else if(s->type == PRIORITY){
-           // if (old_pid != get_pid(pcb)) {  aqui
+            if (old_pid != get_pid(pcb)) {
                 if (core_type == MULTI)
                     fprintf(s->log, "[%s] Executando processo PID %d prioridade %d // processador %d\n", type, get_pid(pcb), get_priority(pcb), core_id);
                 else
-                    fprintf(s->log, "[%s] Executando processo PID %d prioridade %d\n", type, get_pid(pcb), get_priority(pcb));
-            //}
+                    fprintf(s->log, "[%s] Executando processo PID %d prioridade %d \n", type, get_pid(pcb), get_priority(pcb));
+            }
+        }
+
+        old_pid = get_pid(pcb);
+
+        if (core_type == MULTI && s->type == FCFS) {
+            pthread_cond_broadcast(&s->cond); // o outro núcleo pode querer ajudar nas threads deste processo
         }
 
         pthread_mutex_unlock(&s->lock); //aqui
 
-        pcb_running(pcb);
-
         if(s->type == FCFS) {
-            threads_join(pcb);
+            // Concede fatias de execução de QUANTUM_TIME até o processo terminar
+            pcb_running(pcb);
+            while (!pcb_finish(pcb)) {
+                pcb_running(pcb);
+            }
 
-            pthread_mutex_lock(&s->lock); //aqui
+            if (!joined) {
+                threads_join(pcb);
 
-            fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
+                pthread_mutex_lock(&s->lock); //aqui
 
+                fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
+
+                // Reanuncia o processo que segue em execução no outro núcleo após este evento
+                if (core_type == MULTI) {
+                    int other = 1 - core_id;
+                    if (s->current[other] != NULL && s->current[other] != pcb) {
+                        fprintf(s->log, "[%s] Executando processo PID %d // processador %d\n", type, get_pid(s->current[other]), other);
+                    }
+                }
+            }
+            else {
+                pthread_mutex_lock(&s->lock); // núcleo ajudante apenas se desliga do processo
+
+                // Aguarda o núcleo "dono" registrar a finalização antes de buscar novo trabalho
+                while (s->current[1 - core_id] == pcb) {
+                    pthread_cond_wait(&s->cond, &s->lock);
+                }
+            }
+
+            s->current[core_id] = NULL;
             s->active_processes--; //aqui
+
+            if (core_type == MULTI) {
+                pthread_cond_broadcast(&s->cond); // libera o núcleo ajudante e novos despachos
+            }
 
             if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) { //aqui
                 pthread_cond_broadcast(&s->cond); // Acorda núcleos residuais para fechamento  AQUI
@@ -155,13 +221,22 @@ void *scheduler_run(void *a){
             pthread_mutex_unlock(&s->lock); //aqui
         }
         else if(s->type == ROUND_ROBIN || s->type == PRIORITY) {
-            //usleep(s->quantum * 1000);
-            
-            if(pcb_finish(pcb)) {
+            pcb_running(pcb);
+            int finished = pcb_finish(pcb);
+
+            // O processo pode precisar de menos tempo que o quantum, mas segura o
+            // processador até a interrupção de timer acontecer
+            int spent = get_last_burst(pcb);
+            if (spent < QUANTUM_TIME) {
+                usleep((QUANTUM_TIME - spent) * 1000);
+            }
+
+            if(finished) {
                 threads_join(pcb);
 
                 pthread_mutex_lock(&s->lock); //aqui
                 fprintf(s->log, "[%s] Processo PID %d finalizado\n", type, get_pid(pcb));
+                s->current[core_id] = NULL;
                 s->active_processes--; //aqui
 
                 if(s->state == CONCLUDED && s->queue_size(s->ready_queue) == 0 && s->active_processes == 0) { //aqui
@@ -172,14 +247,13 @@ void *scheduler_run(void *a){
             else {
                 pcb_ready(pcb);
                 pthread_mutex_lock(&s->lock); //aqui
+                s->current[core_id] = NULL;
                 s->queue_insert(s->ready_queue, pcb);
                 s->active_processes--; //aqui
                 pthread_cond_signal(&s->cond); // alerta que fila recebeu elemento aqui
                 pthread_mutex_unlock(&s->lock); //aqui
             }
         }
-
-        //old_pid = get_pid(pcb);
 
     }
 
